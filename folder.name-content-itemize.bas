@@ -1,0 +1,168 @@
+Attribute VB_Name = "Module1"
+Option Explicit
+
+Sub FolderNameContentItemize()
+    
+    Dim FileSystem As Object
+    Dim ParentFolder, DestinationSheet As String
+   
+    Dim ConfigSheet As Worksheet
+    Dim UserDialogue As Boolean
+    Dim includeFileNames As Boolean
+    
+    
+    Set ConfigSheet = Worksheets("Config")
+    
+    ParentFolder = ConfigSheet.Cells(3, 2)
+    DestinationSheet = ConfigSheet.Cells(4, 2)
+    
+    If ConfigSheet.Cells(5, 2) = "yes" Then
+        includeFileNames = True
+    Else
+        includeFileNames = False
+    End If
+    
+    If ConfigSheet.Cells(6, 2) = "yes" Then
+        UserDialogue = True
+    Else
+        UserDialogue = False
+    End If
+    
+    'check config
+      
+    Dim ParentFolderPathValid As Boolean
+    ParentFolderPathValid = False
+     
+     
+    If Not Dir(ParentFolder, vbDirectory) = "" Then
+        If GetAttr(ParentFolder) = vbDirectory Then
+            ParentFolderPathValid = True
+        End If
+    End If
+     
+     
+    If Not ParentFolderPathValid Then
+        MsgBox ("Parent Folder Path:" & vbCrLf & vbCrLf & ParentFolder & vbCrLf & vbCrLf & "is not vaild." & vbCrLf & "Please check path to parent folder.")
+        ConfigSheet.Activate
+        ConfigSheet.Range("B1").Activate
+       ' Exit Sub
+    End If
+    
+    Dim i As Integer
+    Dim DestinationSheetValid As Boolean
+    DestinationSheetValid = False
+    
+    For i = 1 To Application.ActiveWorkbook.Sheets.Count
+        If Application.ActiveWorkbook.Sheets(i).Name = DestinationSheet Then
+            DestinationSheetValid = True
+            Exit For
+        End If
+    Next
+    
+    Dim prompt As VbMsgBoxResult
+
+    If Not DestinationSheetValid Then
+        If UserDialogue Then
+            prompt = MsgBox("> " & DestinationSheet & " < - Sheet does not exist." & vbCrLf & vbCrLf & "Create it?", vbYesNoCancel, "Create Worksheet")
+        Else
+            prompt = vbYes
+        End If
+        
+        If prompt = vbYes Then
+            Dim ws As Worksheet
+            Set ws = Application.ActiveWorkbook.Sheets.Add
+            ws.Name = DestinationSheet
+        ElseIf prompt = vbNo Then
+            ConfigSheet.Activate
+            ConfigSheet.Range("B2").Activate
+            Exit Sub
+        Else
+            Exit Sub
+        End If
+    Else
+        If UserDialogue Then
+            prompt = MsgBox("> " & DestinationSheet & " < - Sheet does exist." & vbCrLf & vbCrLf & "Overwrite it?", vbYesNoCancel, "Create Worksheet")
+        Else
+            prompt = vbYes
+        End If
+        
+        If prompt = vbYes Then
+           'continue
+        ElseIf prompt = vbNo Then
+            ConfigSheet.Activate
+            ConfigSheet.Range("B2").Activate
+            Exit Sub
+        Else
+            Exit Sub
+        End If
+    End If
+
+    Sheets(DestinationSheet).UsedRange.ClearContents
+    
+    Set FileSystem = CreateObject("Scripting.FileSystemObject")
+    
+    Dim includeFiles As Boolean
+    includeFiles = False
+    
+    If UserDialogue Then
+        prompt = MsgBox("Include File(s) in Folders?", vbYesNoCancel)
+        If prompt = vbYes Then
+            includeFiles = True
+        ElseIf prompt = vbNo Then
+            includeFiles = False
+        Else
+            Exit Sub
+        End If
+    Else
+        includeFiles = includeFileNames
+    End If
+
+    parseFolder DestinationSheet, ParentFolder, FileSystem.GetFolder(ParentFolder), 1, 1, includeFiles
+    
+    Worksheets(DestinationSheet).Activate
+    Worksheets(DestinationSheet).Range("A2").Activate
+    
+    MsgBox ("Folder Tree build. Job completed.")
+
+End Sub
+
+Sub parseFolder(DestinationSheet, ParentFolder, Folder, a, b, withFiles)
+    
+    Dim SubFolder
+    Dim File
+    Dim displayText As String
+    
+    'read folders
+    For Each SubFolder In Folder.SubFolders
+      
+        a = a + 1
+        
+        'remove parent folder path
+        displayText = Replace(SubFolder, ParentFolder, "")
+        
+        With Worksheets(DestinationSheet)
+            .Hyperlinks.Add Anchor:=.Cells(a, b), Address:=SubFolder, TextToDisplay:=displayText
+        End With
+        
+        parseFolder DestinationSheet, ParentFolder, SubFolder, a, b + 1, withFiles
+        
+    Next
+    
+    If withFiles Then
+    
+        For Each File In Folder.Files
+            
+            a = a + 1
+            
+            'remove parent folder path
+            displayText = Replace(File, ParentFolder, "")
+            
+            With Worksheets(DestinationSheet)
+            .Hyperlinks.Add Anchor:=.Cells(a, b), Address:=File, TextToDisplay:=displayText
+            End With
+            
+        Next
+        
+    End If
+    
+End Sub
