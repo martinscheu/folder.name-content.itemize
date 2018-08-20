@@ -1,0 +1,40 @@
+Sub parseFolder(DestinationSheet, ParentFolder, Folder, a, b, withFiles)
+    
+    Dim SubFolder
+    Dim File
+    Dim displayText As String
+    
+    'read folders
+    For Each SubFolder In Folder.SubFolders
+      
+        a = a + 1
+        
+        'remove parent folder path
+        displayText = Replace(SubFolder, ParentFolder, "")
+        
+        With Worksheets(DestinationSheet)
+            .Hyperlinks.Add Anchor:=.Cells(a, b), Address:=SubFolder, TextToDisplay:=displayText
+        End With
+        
+        parseFolder DestinationSheet, ParentFolder, SubFolder, a, b + 1, withFiles
+        
+    Next
+    
+    If withFiles Then
+    
+        For Each File In Folder.Files
+            
+            a = a + 1
+            
+            'remove parent folder path
+            displayText = Replace(File, ParentFolder, "")
+            
+            With Worksheets(DestinationSheet)
+            .Hyperlinks.Add Anchor:=.Cells(a, b), Address:=File, TextToDisplay:=displayText
+            End With
+            
+        Next
+        
+    End If
+    
+End Sub
